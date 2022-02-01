@@ -2,7 +2,7 @@
 namespace Pepipost\PepipostLaravelDriver;
 
 use GuzzleHttp\Client as HttpClient;
-use Illuminate\Mail\TransportManager;
+use Illuminate\Mail\MailManager;
 use Illuminate\Support\Arr;
 use Illuminate\Support\ServiceProvider;
 use Pepipost\PepipostLaravelDriver\Transport\PepipostTransport;
@@ -16,19 +16,14 @@ class PepipostTransportServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->afterResolving(TransportManager::class, function(TransportManager $manager) {
-            $this->extendTransportManager($manager);
-        });
-    }
-
-    public function extendTransportManager(TransportManager $manager)
-    {
-        $manager->extend('pepipost', function() {
-            $config = $this->app['config']->get('services.pepipost', array());
-            $client = new HttpClient(Arr::get($config, 'guzzle', []));
-            $endpoint = isset($config['endpoint']) ? $config['endpoint'] : null;
-
-            return new PepipostTransport($client, $config['api_key'], $endpoint);
+        $this->app->afterResolving(MailManager::class, function ($mail_manager) {
+            /** @var $mail_manager MailManager */
+            $mail_manager->extend("pepipost", function($config){
+                $client = new HttpClient(Arr::get($config, 'guzzle', []));
+                $pepipost_service_config = config('services.pepipost');
+                $endpoint = isset($pepipost_service_config['endpoint']) ? $pepipost_service_config['endpoint'] : null;
+                return new PepipostTransport($client, $pepipost_service_config['api_key'], $endpoint);
+            });
         });
     }
 }
