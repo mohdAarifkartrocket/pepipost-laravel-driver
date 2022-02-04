@@ -3,9 +3,7 @@ namespace Pepipost\PepipostLaravelDriver\Transport;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
-use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Psr7\Response;
-use Psr\Http\Message\ResponseInterface;
 use Illuminate\Mail\Transport\Transport;
 use Swift_Attachment;
 use Swift_Image;
@@ -18,7 +16,7 @@ class PepipostTransport extends Transport
 
     const SMTP_API_NAME = 'pepipostapi';
     const MAXIMUM_FILE_SIZE = 20480000;
-    const BASE_URL = 'https://api.pepipost.com/v5/mail/send';
+    const BASE_URL = 'https://api.pepipost.com/v2/sendEmail';
 
     /**
      * @var Client
@@ -46,15 +44,12 @@ class PepipostTransport extends Transport
             'from'             => $this->getFrom($message),
             'subject'          => $message->getSubject(),
         ];
-	if($message->getTo()){
+    if($message->getTo()){
                 $data['personalizations'] = $this->getTo($message);
         }
-	
+    
         if ($contents = $this->getContents($message)) {
-            $data['content'] = [
-                'type' => 'html',
-                'value' => $contents
-            ];
+            $data['content'] = $contents;
         }
 
         if ($reply_to = $this->getReplyTo($message)) {
@@ -70,11 +65,11 @@ class PepipostTransport extends Transport
 
         $payload = [
             'headers' => [
-		'api_key'      => $this->apiKey,
+        'api_key'      => $this->apiKey,
                 'Content-Type' => 'application/json',
-		'user-agent'   => 'pepi-laravel-lib v1',
+        'user-agent'   => 'pepi-laravel-lib v1',
             ],
-            'json' => json_encode($data),
+            'json' => $data,
         ];
 
         $response = $this->post($payload);
@@ -100,8 +95,8 @@ class PepipostTransport extends Transport
             }
             return $recipients;
         };
-	$personalization= $this->getTo($message);
-		
+    $personalization= $this->getTo($message);
+        
         return $personalization;
     }
 
@@ -115,22 +110,22 @@ class PepipostTransport extends Transport
     private function getTo(Swift_Mime_SimpleMessage $message)
     {
 
-	$this->numberOfRecipients=0;
+    $this->numberOfRecipients=0;
         if ($message->getTo()) {
-	    $toarray = [];
+        $toarray = [];
             foreach ($message->getTo() as $email => $name) {
-		$recipient = [];
-		$recipient['recipient'] = $email;
-		 if ($cc = $message->getCc()) {
-          		 $recipient['recipient_cc'] = $this->getCC($message);
-       		 }
-		 if ($bcc = $message->getBcc()) {
-          		 $recipient['recipient_bcc'] = $this->getBCC($message);
-		}
+        $recipient = [];
+        $recipient['recipient'] = $email;
+         if ($cc = $message->getCc()) {
+                 $recipient['recipient_cc'] = $this->getCC($message);
+             }
+         if ($bcc = $message->getBcc()) {
+                 $recipient['recipient_bcc'] = $this->getBCC($message);
+        }
                 $toarray[] = $recipient;
-		++$this->numberOfRecipients;
-        	}
-	
+        ++$this->numberOfRecipients;
+            }
+    
    }
         return $toarray;
 }
@@ -221,8 +216,8 @@ class PepipostTransport extends Transport
        $attachments = [];
        foreach ($message->getChildren() as $attachment) {
         $attachment = $message->getChildren();   
-	 if ((!$attachment instanceof Swift_Attachment && !$attachment instanceof Swift_Image)
-		|| $attachment->getFilename() === self::SMTP_API_NAME
+     if ((!$attachment instanceof Swift_Attachment && !$attachment instanceof Swift_Image)
+        || $attachment->getFilename() === self::SMTP_API_NAME
                 || !strlen($attachment->getBody()) > self::MAXIMUM_FILE_SIZE
             ) {
                 continue;
@@ -259,13 +254,13 @@ class PepipostTransport extends Transport
                 case 'settings':
                     $this->setSettings($data, $val);
                     continue 2;
-		case 'tags':
-		    array_set($data,'tags',$val);
-		    continue 2;
-		case 'templateId':
-		    array_set($data,'templateId',$val);
-		    continue 2;	
-                case 'personalizations':		     
+        case 'tags':
+            array_set($data,'tags',$val);
+            continue 2;
+        case 'templateId':
+            array_set($data,'templateId',$val);
+            continue 2; 
+                case 'personalizations':             
                     $this->setPersonalizations($data, $val);
                     continue 2;
 
@@ -284,30 +279,30 @@ class PepipostTransport extends Transport
     {
 
         foreach ($personalizations as $index => $params) {
-	    	
-	    if($this->numberOfRecipients <= 0)
-	    {
-		array_set($data,'personalizations'.'.'.$index  , $params);
-		continue;
-	    } 
-	    $count=0;
-	    while($count<$this->numberOfRecipients)
-	    {
+            
+        if($this->numberOfRecipients <= 0)
+        {
+        array_set($data,'personalizations'.'.'.$index  , $params);
+        continue;
+        } 
+        $count=0;
+        while($count<$this->numberOfRecipients)
+        {
                 if (in_array($params, ['attributes','x-apiheader','x-apiheader_cc'])&& !in_array($params, ['recipient','recipient_cc'])) {
-		      array_set($data, 'personalizations.'.$count . '.' . $index  , $params);	
+              array_set($data, 'personalizations.'.$count . '.' . $index  , $params);   
                 } else {
-			array_set($data, 'personalizations.'.$count . '.' . $index  , $params);
+            array_set($data, 'personalizations.'.$count . '.' . $index  , $params);
                 }
-		$count++;
-       	 }
-	}
+        $count++;
+         }
+    }
     }
 
     private function setSettings(&$data, $settings)
     {
         foreach ($settings as $index => $params) {
-        	array_set($data,'settings.'.$index,$params);   
-	}
+            array_set($data,'settings.'.$index,$params);   
+    }
     }
 
     /**
@@ -316,7 +311,6 @@ class PepipostTransport extends Transport
      */
     private function post($payload)
     {
-        return $this->client->request('POST', $this->endpoint, $payload);
+        return $this->client->post($this->endpoint, $payload);
     }
 }
-
