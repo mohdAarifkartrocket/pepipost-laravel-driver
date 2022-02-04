@@ -215,7 +215,7 @@ class PepipostTransport extends Transport
     {
        $attachments = [];
        foreach ($message->getChildren() as $attachment) {
-        $attachment = $message->getChildren();   
+        // $attachment = $message->getChildren();   
      if ((!$attachment instanceof Swift_Attachment && !$attachment instanceof Swift_Image)
         || $attachment->getFilename() === self::SMTP_API_NAME
                 || !strlen($attachment->getBody()) > self::MAXIMUM_FILE_SIZE
@@ -255,10 +255,10 @@ class PepipostTransport extends Transport
                     $this->setSettings($data, $val);
                     continue 2;
         case 'tags':
-            array_set($data,'tags',$val);
+            $data['tags'] = [$val];
             continue 2;
         case 'templateId':
-            array_set($data,'templateId',$val);
+            $data['templateId'] = $val;
             continue 2; 
                 case 'personalizations':             
                     $this->setPersonalizations($data, $val);
